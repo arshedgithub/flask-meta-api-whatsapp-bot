@@ -9,8 +9,12 @@ app = Flask(__name__)
 
 TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
-RECIPIENT_PHONE_NUMBER = os.getenv("RECIPIENT_PHONE_NUMBER")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+
+DIFY_API_KEY = os.getenv("DIFY_API_KEY")
+DIFY_URL = os.getenv("DIFY_URL")
+
+user_sessions = {}
 
 @app.route('/')
 def home():
@@ -38,14 +42,45 @@ def receive_message():
 
     try:
         message = data['entry'][0]['changes'][0]['value']['messages'][0]
-        phone_number = message['from']
-        text = message['text']['body'].strip().lower()
+        from_number = message['from']
+        user_input = message['text']['body'].strip().lower()
+        
+        # DIFY integration
+        conversation_id = user_sessions.get(from_number, "")
 
-        if text in ["hi", "hello"]:
-            reply_text = "Hi there! 👋 How can I help you today?"
-            send_whatsapp_message(phone_number, reply_text)
-        else:
-            send_whatsapp_message(phone_number, "Hello! I am whastapp Bot. Ask any Question!")
+        dify_payload = {
+            "inputs": {},
+            "query": user_input,
+            "response_mode": "blocking",
+            "conversation_id": conversation_id,
+            "user": from_number,
+            "files": []
+        }
+        dify_headers = {
+            "Authorization": f"Bearer {DIFY_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        # if text in ["hi", "hello"]:
+        #     reply_text = "Hi there! 👋 How can I help you today?"
+        #     send_whatsapp_message(from_number, reply_text)
+        # else:
+        #     send_whatsapp_message(from_number, "Hello! I am whastapp Bot. Ask any Question!")
+            
+        try:
+            response = requests.post(DIFY_URL, headers=dify_headers, json=dify_payload)
+            data = response.json()
+
+            new_convo_id = data.get("conversation_id")
+            if new_convo_id:
+                user_sessions[from_number] = new_convo_id
+
+            answer = data.get("answer", "Sorry! I didn't understand that.")
+            send_whatsapp_message(from_number, answer)
+
+        except Exception as e:
+            print("Error:", e)
+            send_whatsapp_message(from_number, "There was an error contacting the AI service.")
             
     except Exception as e:
         print("No text message or error:", e)
