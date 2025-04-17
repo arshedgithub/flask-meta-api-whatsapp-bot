@@ -38,7 +38,7 @@ def verify():
 @app.route('/webhooks', methods=['POST'])
 def receive_message():
     data = request.get_json()
-    print("Received webhook:", data)
+    print("Received webhook!")
 
     try:
         message = data['entry'][0]['changes'][0]['value']['messages'][0]
@@ -61,12 +61,6 @@ def receive_message():
             "Content-Type": "application/json"
         }
 
-        # if text in ["hi", "hello"]:
-        #     reply_text = "Hi there! 👋 How can I help you today?"
-        #     send_whatsapp_message(from_number, reply_text)
-        # else:
-        #     send_whatsapp_message(from_number, "Hello! I am whastapp Bot. Ask any Question!")
-            
         try:
             response = requests.post(DIFY_URL, headers=dify_headers, json=dify_payload)
             data = response.json()
@@ -79,7 +73,7 @@ def receive_message():
             send_whatsapp_message(from_number, answer)
 
         except Exception as e:
-            print("Error:", e)
+            print("Error: ", e)
             send_whatsapp_message(from_number, "There was an error contacting the AI service.")
             
     except Exception as e:
@@ -102,7 +96,6 @@ def send_whatsapp_message(to, message):
             "body": message
         }
     }
-    
     response = requests.post(url, headers=headers, json=data)
     print(response.status_code, response.text)
         
